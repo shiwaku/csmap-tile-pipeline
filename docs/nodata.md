@@ -12,6 +12,13 @@ LiDAR の欠測域）が不透明に塗り潰され、地図に重ねたとき�
 
 ---
 
+![NoData比較](images/nodata-comparison.png)
+
+左: 本家 v0.1.4 のまま（海が塗り潰されている） / 右: パッチ適用後（市松模様が透明部分）。
+入力DEM・パラメータは同一で、csmap-py のコードだけが異なる。
+
+---
+
 ## 1. 実例: 東京都島しょ部の作り直し
 
 2024-03 に生成したタイルは海域が塗り潰されていたため、2025-05 に作り直した。
@@ -92,18 +99,19 @@ chunk = dem.read(
 ### ② NaN の位置のアルファを 0 にする（`process.py`）
 
 ```python
-pad_trim = 1
-g_margin = (params.gf_size + params.gf_sigma) // 2
-mask = np.isnan(chunk)[pad_trim:-pad_trim, pad_trim:-pad_trim]
-mask = mask[g_margin:-g_margin, g_margin:-g_margin]
-csmap_chunk_margin_removed[3, mask] = 0
+out_h, out_w = csmap_chunk_margin_removed.shape[1:]
+off_y = (chunk.shape[0] - out_h) // 2
+off_x = (chunk.shape[1] - out_w) // 2
+nodata_mask = np.isnan(chunk)[off_y : off_y + out_h, off_x : off_x + out_w]
+csmap_chunk_margin_removed[3, nodata_mask] = 0
 ```
 
 ①で NaN になった位置を拾って透明にする。**①が無いと空振りする**
 （実際に②だけ当てて検証したところ透明0.0%のままだった）。
 
-`pad_trim` と `g_margin` は、CS立体図生成時に削られる縁の分だけ
-マスクを切り詰めるためのもの。出力配列とサイズを揃える必要がある。
+CS立体図の生成では縁が削られるため、マスクも同じだけ切り詰めて
+出力配列とサイズを揃える必要がある。削られる幅は入力 `chunk` と出力の
+**形状差から求めている**ので、パディングやフィルタサイズの実装が変わっても追従する。
 
 ### ③ float32 のオーバーフローを避ける（`calc.py`）
 

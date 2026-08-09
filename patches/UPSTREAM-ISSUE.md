@@ -20,8 +20,10 @@ NoData が設定された DEM を入力すると、**データの無い範囲（
 
 生成物を地図タイルとして配信する場合、下のレイヤが隠れてしまうため実用上の問題になります。
 
-<!-- ここに比較画像を添付 -->
-左: 現状の出力 / 右: 後述の修正を当てた出力（市松模様が透明部分）
+![NoData comparison](https://raw.githubusercontent.com/shiwaku/csmap-tile-pipeline/main/docs/images/nodata-comparison.png)
+
+左: v0.1.4 現状の出力（海が塗り潰されている） / 右: 後述の修正を当てた出力（市松模様が透明部分）
+入力DEM・パラメータは同一で、csmap-py のコードだけが異なります。
 
 ## 再現手順
 
@@ -95,14 +97,17 @@ chunk = dem.read(1, window=Window(x, y, chunk_size, chunk_size))
 ```diff
      ]  # shape = (4, chunk_size - margin, chunk_size - margin)
  
-+    pad_trim = 1  # csmap() 内の dem_rgb[:, 1:-1, 1:-1] に対応
-+    g_margin = (params.gf_size + params.gf_sigma) // 2
-+    mask = np.isnan(chunk)[pad_trim:-pad_trim, pad_trim:-pad_trim]
-+    mask = mask[g_margin:-g_margin, g_margin:-g_margin]
-+    csmap_chunk_margin_removed[3, mask] = 0
++    out_h, out_w = csmap_chunk_margin_removed.shape[1:]
++    off_y = (chunk.shape[0] - out_h) // 2
++    off_x = (chunk.shape[1] - out_w) // 2
++    nodata_mask = np.isnan(chunk)[off_y : off_y + out_h, off_x : off_x + out_w]
++    csmap_chunk_margin_removed[3, nodata_mask] = 0
 +
      if lock is None:
 ```
+
+削られる縁の幅は、入力 `chunk` と出力の形状差から求めています。
+パディングやフィルタサイズの実装が変わっても追従します。
 
 1 が無いと 2 は空振りします（NaN が発生しないため）。**2つで1組**です。
 
@@ -123,9 +128,9 @@ chunk = dem.read(1, window=Window(x, y, chunk_size, chunk_size))
 
 - **`masked=True` はメモリ・速度にオーバーヘッドがあります。**
   常時有効にするか、オプション（`--nodata-transparent` 等）にするか
-- **2 のマージン計算が実装依存です。**
-  `csmap()` 内のパディング除去とガウシアンフィルタのマージンに合わせて手で算出しており、
-  実装が変わると壊れます。より堅牢な書き方があればそちらが良いと思います
+- **2 のマスク位置の求め方。**
+  形状差から導出しているので `csmap()` の実装変更には追従しますが、
+  縁が上下左右で非対称に削られる実装になった場合は破綻します
 - **NoData 宣言の無い DEM では、この修正でも透明化されません。**
   仕様として明記するか、`--src-nodata` のような指定を設けるか
 
@@ -148,7 +153,6 @@ https://github.com/shiwaku/csmap-tile-pipeline
 
 ## 投稿時のメモ
 
-- 比較画像 `work/e2e-aogashima/compare-patch.png` を本文の該当箇所に添付する
-  （GitHub の issue 作成画面にドラッグ＆ドロップ）
-- 画像が無くても本文だけで再現条件は伝わる
+- 比較画像は本リポジトリの raw URL を参照しているので、そのまま貼れば表示される
 - issue で反応を見てから PR を出す想定。PR にする場合は修正案 1・2 に絞る
+- PR の下書きは [UPSTREAM-PR.md](UPSTREAM-PR.md)

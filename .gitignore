@@ -7,6 +7,10 @@ work/
 *.webp
 *.png
 
+# ドキュメント用の画像は含める
+!docs/images/
+!docs/images/*.png
+
 # csmap-py は別リポジトリから取得する
 csmap-py/
 

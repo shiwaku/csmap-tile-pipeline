@@ -15,7 +15,7 @@
 | # | ファイル | 内容 |
 |---|---|---|
 | ① | `process.py` ×2箇所 | `dem.read(..., masked=True).filled(np.nan)` — NoDataをNaNに置き換える |
-| ② | `process.py` | `csmap_chunk_margin_removed[3, mask] = 0` — NaNの位置のアルファを0にする |
+| ② | `process.py` | `csmap_chunk_margin_removed[3, nodata_mask] = 0` — NaNの位置のアルファを0にする（マスク位置は入出力の形状差から導出） |
 | ③ | `calc.py` | `p`,`q` を `.astype(np.float64)` — float32のオーバーフロー回避 |
 
 ①が無いと②は空振りする（`np.isnan(1.70141e+38)` は `False` のため）。
@@ -33,7 +33,7 @@ patch -p1 < /path/to/patches/csmap-py-nodata.patch
 
 ```bash
 grep -c 'masked=True' csmap/process.py    # 2 が返れば①OK
-grep -c 'mask\] = 0'  csmap/process.py    # 1 が返れば②OK
+grep -c 'nodata_mask'  csmap/process.py   # 2 が返れば②OK
 grep -c 'float64'     csmap/calc.py       # 2 が返れば③OK
 ```
 
@@ -49,3 +49,12 @@ grep -c 'float64'     csmap/calc.py       # 2 が返れば③OK
 
 **DEM側に NoData の宣言が必要。** 宣言が無いDEMではパッチを当てても透明化されない。
 対処は [../docs/nodata.md](../docs/nodata.md) の「4. DEM に NoData の宣言が必要」を参照。
+
+### 下書き
+
+本家への報告・提案の下書きを用意している。
+
+| ファイル | 内容 |
+|---|---|
+| [UPSTREAM-ISSUE.md](UPSTREAM-ISSUE.md) | issue の下書き（まずこちら） |
+| [UPSTREAM-PR.md](UPSTREAM-PR.md) | PR の下書き（issueの反応を見てから） |
