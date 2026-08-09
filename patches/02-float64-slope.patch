@@ -1,0 +1,14 @@
+--- a/csmap/calc.py
++++ b/csmap/calc.py
+@@ -9,8 +9,9 @@
+     z4 = dem[0:-2, 1:-1]
+     z6 = dem[2:, 1:-1]
+     z8 = dem[1:-1, 2:]
+-    p = (z6 - z4) / 2
+-    q = (z8 - z2) / 2
++    # NoDataを含むDEMではfloat32のまま二乗するとオーバーフローしてinfになる
++    p = ((z6 - z4) / 2).astype(np.float64)
++    q = ((z8 - z2) / 2).astype(np.float64)
+     p2 = p * p
+     q2 = q * q
+ 

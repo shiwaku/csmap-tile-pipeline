@@ -26,7 +26,7 @@ CS立体図の生成には [MIERUNE/csmap-py](https://github.com/MIERUNE/csmap-p
 > ## ⚠ 最初に読むこと
 >
 > **本家の csmap-py は NoData（データの無い範囲）を透明化しない。**
-> `patches/csmap-py-nodata.patch` の適用が必須で、これを怠ると海や範囲外が
+> `patches/01-nodata-transparency.patch` の適用が必須で、これを怠ると海や範囲外が
 > 不透明に塗り潰される。東京都島しょ部は これが原因で作り直している。
 > 前提として **DEM側に NoData の宣言が必要**。
 > → **[docs/nodata.md](docs/nodata.md)** / **[patches/README.md](patches/README.md)**
@@ -37,7 +37,7 @@ CS立体図の生成には [MIERUNE/csmap-py](https://github.com/MIERUNE/csmap-p
 # 環境構築（初回のみ）— パッチ適用が必須
 python3 -m venv csmapenv
 ./csmapenv/bin/pip install csmap-py==0.1.4
-(cd csmapenv/lib/python3*/site-packages && patch -p1 < ../../../../patches/csmap-py-nodata.patch)
+(cd csmapenv/lib/python3*/site-packages && patch -p1 < ../../../../patches/01-nodata-transparency.patch)
 export CSMAP_CMD="$PWD/csmapenv/bin/python -m csmap"
 
 # ①→② 大量DEMをVRTに束ねる
@@ -89,7 +89,8 @@ docs/
   webp.md                 WebP化と .htaccess による配信
   datasets.md             データセット一覧と現況
 patches/
-  csmap-py-nodata.patch   本家csmap-pyへの必須パッチ（NoData透明化）
+  01-nodata-transparency.patch  本家csmap-pyへの必須パッチ（NoData透明化）
+  02-float64-slope.patch        既存データ再現用（任意）
 scripts/
   01-build-vrt.sh         大量DEM → VRT
   02-vrt-to-tif.sh        VRT → 統合DEM GeoTIFF

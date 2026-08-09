@@ -7,7 +7,7 @@ LiDAR の欠測域）が不透明に塗り潰され、地図に重ねたとき�
 **結論を先に:**
 
 1. **DEM に NoData が宣言されていることが前提。** 宣言が無いと透明化できない
-2. **本家の csmap-py は NoData を透明化しない。** `patches/csmap-py-nodata.patch` が必須
+2. **本家の csmap-py は NoData を透明化しない。** `patches/01-nodata-transparency.patch` が必須
 3. WebP化しても透明は完全に保たれる（アルファは可逆で符号化される）
 
 ---
@@ -76,17 +76,31 @@ chunk = dem.read(1, window=Window(x, y, chunk_size, chunk_size))
 
 ## 3. パッチの内容
 
-`patches/csmap-py-nodata.patch`（本家 v0.1.4 に `patch -p1` で適用可能）。
-**3箇所すべてが必要**で、どれか欠けると効かない。
+パッチは2つに分かれている。**NoData の透明化には `01` だけで足りる。**
 
-### ① DEM読み込み時に NoData を NaN に置き換える（`process.py` / 2箇所）
+| パッチ | 内容 | 本家テスト |
+|---|---|---|
+| `patches/01-nodata-transparency.patch` | NoData の透明化（①②） | ✅ 3 passed |
+| `patches/02-float64-slope.patch` | float32オーバーフロー回避（③） | ❌ 3 failed |
+
+`02` は出力が丸め誤差レベルで変わり（最大1/255・該当画素0.000%）、
+本家のフィクスチャ比較を壊すため**本家への提案からは除外**している。
+既存データセットを画素単位で再現する用途でのみ適用する
+（適用しない場合、859万画素中27画素が相違）。
+
+### ① DEM読み込み時に NoData を NaN に置き換える（`process.py`）
 
 ```python
-chunk = dem.read(
-    1, window=Window(x, y, chunk_size, chunk_size),
-    masked=True,          # NoData宣言を参照してマスクする
-).filled(np.nan)          # マスク位置を NaN に置き換える
+def _read_chunk(dem, window):
+    chunk = dem.read(1, window=window, masked=True)   # NoData宣言を参照してマスク
+    if not np.issubdtype(chunk.dtype, np.floating):
+        chunk = chunk.astype("float32")               # 整数型はNaNを保持できない
+    return chunk.filled(np.nan)                       # マスク位置をNaNに
 ```
+
+**整数型のDEMでは `float32` への昇格が必須。**
+これが無いと `TypeError: Cannot convert fill_value nan to dtype int16` で落ち、
+出力が全面透明になる。float64 のDEMは精度を落とさないようそのまま扱う。
 
 `NaN` は "Not a Number"（数値でない）の意味で、**欠測を表す標準的な印**。
 ゼロや巨大値と違って計算に紛れ込まず、`np.isnan()` で位置を正確に拾える。
@@ -130,15 +144,66 @@ NoData 宣言の無いDEMを扱う際の保険として残す。
 python3 -m venv csmapenv
 ./csmapenv/bin/pip install csmap-py==0.1.4
 cd csmapenv/lib/python3*/site-packages
-patch -p1 < /path/to/patches/csmap-py-nodata.patch
+patch -p1 < /path/to/patches/01-nodata-transparency.patch
+patch -p1 < /path/to/patches/02-float64-slope.patch   # 既存データを再現する場合のみ
 ```
+
+### 検証結果
+
+| 項目 | 結果 |
+|---|---|
+| 実データ（float32 / 1.70141e+38） | 0.0% → 29.63%、正解と画素単位で完全一致 |
+| NoData値・型 6パターン | すべて正常 |
+| 本家テストスイート | ✅ 3 passed（`01` のみ適用時） |
+| 並列処理（max_workers=4） | 逐次と画素差0 |
+| NoData宣言なしDEM | 退行なし（本家テストが通過） |
+| 性能 | 0.99秒 → 0.66秒 |
+| メモリ | 220MB → 226MB（+2.5%） |
 
 > 本家 [MIERUNE/csmap-py](https://github.com/MIERUNE/csmap-py) には
 > このパッチは取り込まれていない（v0.1.4 / 2025-01-07 時点で確認）。
 
 ---
 
-## 4. DEM に NoData の宣言が必要
+## 4. DEM の NoData はどうなっていればよいか
+
+**必須条件はひとつだけ。「NoData が宣言されていること」。**
+
+```bash
+gdalinfo dem.tif | grep NoData
+#   NoData Value=-9999    ← この行があればOK。無ければNG
+```
+
+**値は何でもよい。** パッチはファイルの宣言を読むだけなので、以下はいずれも動作に影響しない。
+
+- NoData の**値**が整数か小数か（−9999 / −32768 / 1.70141e+38 / NaN）
+- DEM の**データ型**が整数か浮動小数点か（int16 / int32 / uint16 / float32 / float64）
+
+整数型の DEM は内部で float32 に昇格して処理される。
+
+| 型 | NoData値 | 結果 |
+|---|---|---|
+| float32 | −9999 | ✅ |
+| float32 | NaN | ✅ |
+| float32 | 1.70141e+38 | ✅ |
+| int16 | −9999 | ✅ |
+| int32 | −32768 | ✅ |
+| uint16 | 65535 | ✅ |
+
+**ただし `0` は避ける。** 動作はするが、標高0m（海面）と区別できず、
+本物の0m地点まで透明になる。
+
+### 実務での判断
+
+1. **配布元の値をそのまま使う。** 変更する理由はない
+2. 宣言が無いときだけ後付けする
+3. 一度宣言すれば VRT・統合を経ても保たれる。最初のDEMさえ正しければ以降は不要
+
+新規に自分で決める場合の推奨は、浮動小数点なら **−9999**、整数型なら **−9999 か −32768**。
+
+---
+
+## 5. DEM に NoData の宣言が必要（実証）
 
 **画素値が同じでも、宣言の有無だけで結果が変わる。**
 
@@ -187,7 +252,7 @@ NoData値は配布元の仕様に合わせる（`1.70141e+38`、`-9999`、`-3276
 
 ---
 
-## 5. WebP でも透明は完全に保たれる
+## 6. WebP でも透明は完全に保たれる
 
 **WebP は非可逆モード（q=95）でも、アルファチャンネルは可逆で符号化される。**
 
@@ -205,7 +270,7 @@ NoData値は配布元の仕様に合わせる（`1.70141e+38`、`-9999`、`-3276
 
 ---
 
-## 6. 検証方法
+## 7. 検証方法
 
 ```bash
 bash scripts/98-check-nodata.sh <GeoTIFF または タイルディレクトリ>
@@ -227,10 +292,10 @@ bash scripts/98-check-nodata.sh <GeoTIFF または タイルディレクトリ>
 
 ---
 
-## 7. チェックリスト
+## 8. チェックリスト
 
 - [ ] 元DEM に NoData が宣言されているか（`gdalinfo | grep NoData`）
-- [ ] csmap-py に `patches/csmap-py-nodata.patch` を適用したか
+- [ ] csmap-py に `patches/01-nodata-transparency.patch` を適用したか
 - [ ] CS立体図 GeoTIFF が RGBA 4バンドになっているか
 - [ ] アルファの透明率が対象地域の形状と整合するか（`98-check-nodata.sh`）
 - [ ] 生成タイルが 4バンドを保っているか

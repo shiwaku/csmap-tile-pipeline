@@ -93,13 +93,13 @@ gdal_translate -of GTiff \
 [csmap-py](https://github.com/MIERUNE/csmap-py) で標高から CS立体図（曲率・傾斜・標高を合成したRGB）を生成する。
 
 > **⚠ 本家の csmap-py は NoData を透明化しない。**
-> `patches/csmap-py-nodata.patch` を適用したものを使うこと。
+> `patches/01-nodata-transparency.patch` を適用したものを使うこと。
 > 適用しないと海や範囲外が不透明に塗り潰される。→ [nodata.md](nodata.md)
 >
 > ```bash
 > python3 -m venv csmapenv
 > ./csmapenv/bin/pip install csmap-py==0.1.4
-> (cd csmapenv/lib/python3*/site-packages && patch -p1 < ../../../../patches/csmap-py-nodata.patch)
+> (cd csmapenv/lib/python3*/site-packages && patch -p1 < ../../../../patches/01-nodata-transparency.patch)
 > export CSMAP_CMD="$PWD/csmapenv/bin/python -m csmap"
 > ```
 >

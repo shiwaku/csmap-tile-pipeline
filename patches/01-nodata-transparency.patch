@@ -1,20 +1,25 @@
---- a/csmap/calc.py
-+++ b/csmap/calc.py
-@@ -9,8 +9,9 @@
-     z4 = dem[0:-2, 1:-1]
-     z6 = dem[2:, 1:-1]
-     z8 = dem[1:-1, 2:]
--    p = (z6 - z4) / 2
--    q = (z8 - z2) / 2
-+    # NoDataを含むDEMではfloat32のまま二乗するとオーバーフローしてinfになる
-+    p = ((z6 - z4) / 2).astype(np.float64)
-+    q = ((z8 - z2) / 2).astype(np.float64)
-     p2 = p * p
-     q2 = q * q
- 
 --- a/csmap/process.py
 +++ b/csmap/process.py
-@@ -74,6 +74,15 @@
+@@ -52,6 +52,18 @@
+     return blend
+ 
+ 
++def _read_chunk(dem, window) -> np.ndarray:
++    """NoDataをNaNとして読み込む。
++
++    整数型のDEMは NaN を保持できないため float32 に昇格させる。
++    float64 のDEMは精度を落とさないようそのまま扱う。
++    """
++    chunk = dem.read(1, window=window, masked=True)
++    if not np.issubdtype(chunk.dtype, np.floating):
++        chunk = chunk.astype("float32")
++    return chunk.filled(np.nan)
++
++
+ def _process_chunk(
+     chunk: np.ndarray,
+     dst: rasterio.io.DatasetWriter,
+@@ -74,6 +86,15 @@
          ),
      ]  # shape = (4, chunk_size - margin, chunk_size - margin)
  
@@ -30,29 +35,25 @@
      if lock is None:
          dst.write(
              csmap_chunk_margin_removed,
-@@ -142,7 +151,11 @@
+@@ -142,7 +163,9 @@
                          if y + chunk_csmap_size > out_height:
                              write_size_y = out_height - y
  
 -                        chunk = dem.read(1, window=Window(x, y, chunk_size, chunk_size))
-+                        chunk = dem.read(
-+                            1,
-+                            window=Window(x, y, chunk_size, chunk_size),
-+                            masked=True,
-+                        ).filled(np.nan)
++                        chunk = _read_chunk(
++                            dem, Window(x, y, chunk_size, chunk_size)
++                        )
                          _process_chunk(
                              chunk,
                              dst,
-@@ -167,8 +180,10 @@
+@@ -166,8 +189,8 @@
+                             if y + chunk_csmap_size > out_height:
                                  write_size_y = out_height - y
  
-                             chunk = dem.read(
+-                            chunk = dem.read(
 -                                1, window=Window(x, y, chunk_size, chunk_size)
--                            )
-+                                1,
-+                                window=Window(x, y, chunk_size, chunk_size),
-+                                masked=True,
-+                            ).filled(np.nan)
++                            chunk = _read_chunk(
++                                dem, Window(x, y, chunk_size, chunk_size)
+                             )
                              executor.submit(
                                  _process_chunk,
-                                 chunk,
