@@ -60,6 +60,16 @@ bash scripts/99-verify-tiles.sh work/tokyo-shima-2023/tiles/tokyopc-shima-01-202
 
 データセットをまとめて処理する場合は `datasets.tsv` に定義して `scripts/run-all.sh` を使う。
 
+```bash
+bash scripts/00-setup-csmap.sh          # 初回のみ（パッチ適用済みcsmap-pyを用意）
+OUT_ROOT=~/csmap-tiles bash scripts/run-all.sh
+```
+
+> **WSL で実行する場合、出力先を Windows ドライブ（`/mnt/c` 等）にしないこと。**
+> 小ファイルの大量書き込みで DrvFs のオーバーヘッドが効き、**2.4倍遅くなる**。
+> 実測: `/mnt/c` 75〜90枚/秒 → WSL内ext4 157〜213枚/秒。
+> 全23データセットで約30時間→約13時間の差。
+
 ## なぜ WebP か
 
 PNG から WebP(q=95) に変えることで **容量が約78%減る**。画質は目視で区別がつかない。
