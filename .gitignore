@@ -18,3 +18,5 @@ csmap-py/
 *.tmp
 temp_filelist.txt
 .DS_Store
+csmapenv/
+work/logs/
