@@ -3,7 +3,6 @@
 大量の DEM（GeoTIFF）から **CS立体図**を作成し、**WebPラスタータイル**として配信するまでの手順とスクリプト。
 
 CS立体図の生成には [MIERUNE/csmap-py](https://github.com/MIERUNE/csmap-py) を使用する。
-[林野庁「CS立体図」](https://www.rinya.maff.go.jp/j/seibi/sagyoudo/attach/pdf/romou-12.pdf) に基づく。
 
 ## パイプライン
 
