@@ -92,6 +92,19 @@ gdal_translate -of GTiff \
 
 [csmap-py](https://github.com/MIERUNE/csmap-py) で標高から CS立体図（曲率・傾斜・標高を合成したRGB）を生成する。
 
+> **⚠ 本家の csmap-py は NoData を透明化しない。**
+> `patches/csmap-py-nodata.patch` を適用したものを使うこと。
+> 適用しないと海や範囲外が不透明に塗り潰される。→ [nodata.md](nodata.md)
+>
+> ```bash
+> python3 -m venv csmapenv
+> ./csmapenv/bin/pip install csmap-py==0.1.4
+> (cd csmapenv/lib/python3*/site-packages && patch -p1 < ../../../../patches/csmap-py-nodata.patch)
+> export CSMAP_CMD="$PWD/csmapenv/bin/python -m csmap"
+> ```
+>
+> 前提として **元DEM に NoData の宣言が必要**（`gdalinfo | grep NoData` で確認）。
+
 ```bash
 bash scripts/03-csmap.sh <入力DEM.tif> <出力csmap.tif>
 ```
@@ -193,6 +206,8 @@ bash scripts/99-verify-tiles.sh <タイルディレクトリ>
 | 4GB超で書き込みに失敗 | `-co BIGTIFF=YES` の付け忘れ |
 | `--tiledriver` が無いと言われる | GDAL が 3.6 未満。バージョンを確認する |
 | csmap-py がメモリ不足で落ちる | `--max_workers` を減らす。`--chunk_size` を小さくする |
+| **海や範囲外が不透明に塗り潰される** | **csmap-py にパッチが未適用、または元DEMにNoData宣言が無い。[nodata.md](nodata.md) 参照** |
+| 傾斜が真っ白／おかしい | NoDataの巨大値がfloat32でオーバーフローしている。パッチ③を確認 |
 | タイルの継ぎ目に線が出る | DEM間に隙間がある。VRTの元ファイルの網羅性を確認する |
 
 ---

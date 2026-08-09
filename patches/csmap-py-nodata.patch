@@ -1,0 +1,61 @@
+--- a/csmap/calc.py
++++ b/csmap/calc.py
+@@ -9,8 +9,10 @@
+     z4 = dem[0:-2, 1:-1]
+     z6 = dem[2:, 1:-1]
+     z8 = dem[1:-1, 2:]
+-    p = (z6 - z4) / 2
+-    q = (z8 - z2) / 2
++    # NoData(1.70141e+38 等の巨大値)を含むDEMでは float32 のまま二乗すると
++    # オーバーフローして inf/nan になるため float64 に昇格する
++    p = ((z6 - z4) / 2).astype(np.float64)
++    q = ((z8 - z2) / 2).astype(np.float64)
+     p2 = p * p
+     q2 = q * q
+ 
+--- a/csmap/process.py
++++ b/csmap/process.py
+@@ -74,6 +74,14 @@
+         ),
+     ]  # shape = (4, chunk_size - margin, chunk_size - margin)
+ 
++    # NoData(NaN)の位置をアルファ0にして透明化する。
++    # これが無いとデータの無い範囲(海、範囲外、欠測域)が不透明に塗り潰される。
++    pad_trim = 1  # csmap() 内の dem_rgb[:, 1:-1, 1:-1] に対応
++    g_margin = (params.gf_size + params.gf_sigma) // 2
++    mask = np.isnan(chunk)[pad_trim:-pad_trim, pad_trim:-pad_trim]
++    mask = mask[g_margin:-g_margin, g_margin:-g_margin]
++    csmap_chunk_margin_removed[3, mask] = 0
++
+     if lock is None:
+         dst.write(
+             csmap_chunk_margin_removed,
+@@ -142,7 +150,12 @@
+                         if y + chunk_csmap_size > out_height:
+                             write_size_y = out_height - y
+ 
+-                        chunk = dem.read(1, window=Window(x, y, chunk_size, chunk_size))
++                        # NoDataをNaNとして読み込む（透明化の起点）
++                        chunk = dem.read(
++                            1,
++                            window=Window(x, y, chunk_size, chunk_size),
++                            masked=True,
++                        ).filled(np.nan)
+                         _process_chunk(
+                             chunk,
+                             dst,
+@@ -166,9 +179,12 @@
+                             if y + chunk_csmap_size > out_height:
+                                 write_size_y = out_height - y
+ 
++                            # NoDataをNaNとして読み込む（透明化の起点）
+                             chunk = dem.read(
+-                                1, window=Window(x, y, chunk_size, chunk_size)
+-                            )
++                                1,
++                                window=Window(x, y, chunk_size, chunk_size),
++                                masked=True,
++                            ).filled(np.nan)
+                             executor.submit(
+                                 _process_chunk,
+                                 chunk,

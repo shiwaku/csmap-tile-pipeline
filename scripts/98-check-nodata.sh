@@ -47,7 +47,8 @@ if os.path.isdir(t):
             a = ds.GetRasterBand(4).ReadAsArray()
             tr_list.append((a == 0).sum() / a.size * 100)
         ds = None
-    print(f"  バンド数: {sorted(nb)}" + ("" if min(nb) >= 4 else "  ⚠ アルファのないタイルがあります"))
+    # gdal2tiles は完全不透明のタイルをアルファ無し(3バンド)で出力する。これは正常な最適化。
+    print(f"  バンド数: {sorted(nb)}" + ("" if min(nb) >= 4 else "  (3バンドは完全不透明タイルの最適化)"))
     if tr_list:
         arr = np.array(tr_list)
         print(f"  透明率  : 平均{arr.mean():5.1f}%  最小{arr.min():5.1f}%  最大{arr.max():5.1f}%")
