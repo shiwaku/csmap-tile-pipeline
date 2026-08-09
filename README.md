@@ -23,6 +23,9 @@ CS立体図の生成には [MIERUNE/csmap-py](https://github.com/MIERUNE/csmap-p
 
 各段階の詳細は **[docs/pipeline.md](docs/pipeline.md)** を参照。
 
+> **NoData（透明領域）の設定に注意。** ラスタータイルで最も事故が起きやすい箇所で、
+> 東京都島しょ部は これが原因で作り直している。**[docs/nodata.md](docs/nodata.md)** を必ず読むこと。
+
 ## クイックスタート
 
 ```bash
@@ -77,6 +80,7 @@ datasets.tsv              データセット台帳（元DEM・CS立体図・配�
 docs/
   pipeline.md             ①〜⑥の詳細手順
   parameters.md           csmap-py のパラメータ解説
+  nodata.md               NoData(透明領域)の扱い ← 最も事故が多い
   webp.md                 WebP化と .htaccess による配信
   datasets.md             データセット一覧と現況
 scripts/
@@ -85,6 +89,7 @@ scripts/
   03-csmap.sh             DEM → CS立体図
   04-warp-3857.sh         → EPSG:3857
   05-tiles-webp.sh        → WebPタイル
+  98-check-nodata.sh      NoData(透明領域)が正しいか検証
   99-verify-tiles.sh      タイルの枚数・形式を検証
   run-all.sh              datasets.tsv に従って一括実行
 inventory/
