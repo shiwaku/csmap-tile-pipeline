@@ -74,4 +74,20 @@ grep -c 'float64'      csmap/calc.py      # 2 (02を当てた場合)
 | [UPSTREAM-ISSUE.md](UPSTREAM-ISSUE.md) | issue の下書き |
 | [UPSTREAM-PR.md](UPSTREAM-PR.md) | PR の下書き |
 
-fork 済み: https://github.com/shiwaku/csmap-py （ブランチ `fix/nodata-transparency`、`01` のみ適用）
+### fork の状態
+
+https://github.com/shiwaku/csmap-py  ブランチ `fix/nodata-transparency`
+
+| コミット | 内容 |
+|---|---|
+| `fix: NoData の範囲を透明にする` | `01` のパッチ相当（`csmap/process.py` 26行） |
+| `test: NoData の透明化に関するテストを追加` | `tests/test_nodata.py`（140行） |
+
+テスト結果:
+
+```
+素の v0.1.4 : 6 failed, 2 passed   ← 退行検知として機能する
+fork ブランチ: 11 passed            ← 既存3件 + 新規8件
+```
+
+ローカル: `C:\Users\yshiw\Documents\GIS\csmap-py-fork`

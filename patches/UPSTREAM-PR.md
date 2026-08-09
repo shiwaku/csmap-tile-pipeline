@@ -6,25 +6,20 @@ issue（[UPSTREAM-ISSUE.md](UPSTREAM-ISSUE.md)）で反応を見てから出す�
 
 ## 手順
 
+**fork とブランチは作成済み**（コード修正・テストともコミット・push 済み）。
+
+- https://github.com/shiwaku/csmap-py  ブランチ `fix/nodata-transparency`
+- ローカル: `C:\Users\yshiw\Documents\GIS\csmap-py-fork`
+
+PR を出すときは:
+
 ```bash
-# 1. fork して clone
-gh repo fork MIERUNE/csmap-py --clone --remote
-cd csmap-py
-git checkout -b fix/nodata-transparency
-
-# 2. パッチを適用
-patch -p1 < /path/to/patches/csmap-py-nodata.patch
-
-# 3. 確認
-grep -c 'masked=True' csmap/process.py   # 2
-grep -c 'nodata_mask' csmap/process.py   # 2
-grep -c 'float64'     csmap/calc.py      # 2
-
-# 4. push して PR
-git add -A && git commit -m "fix: make NoData areas transparent"
-git push -u origin fix/nodata-transparency
-gh pr create --repo MIERUNE/csmap-py --fill
+cd /mnt/c/Users/yshiw/Documents/GIS/csmap-py-fork
+gh pr create --repo MIERUNE/csmap-py --base main \
+  --head shiwaku:fix/nodata-transparency --title "fix: NoData の範囲を透明にする"
 ```
+
+内容を変更する場合はローカルで編集して `git push` すれば PR に反映される。
 
 ---
 
@@ -92,10 +87,28 @@ NoData の巨大値が残っている場合、`p * p` が float32 の上限（�
 1 を入れれば直接の実害は減りますが、NoData 宣言の無い DEM への保険として含めています。
 不要であれば外します。
 
+## テスト
+
+`tests/test_nodata.py` を追加しました。フィクスチャは増やさず、テスト内で合成DEMを生成します。
+
+| テスト | 内容 |
+|---|---|
+| `test_nodata_is_transparent` | dtype/NoData値の6通り（float32の−9999/NaN/1.70141e+38、int16/int32/uint16）で透明画素の割合が入力のNoData比率と一致すること |
+| `test_nodata_transparent_by_worker` | 並列処理でも結果が一致すること |
+| `test_no_nodata_declared_stays_opaque` | NoData宣言の無いDEMでは全て不透明のままであること（既存挙動が変わらないことの確認） |
+
+```
+修正前(v0.1.4): 6 failed, 2 passed
+修正後:         8 passed  （既存3件と合わせて 11 passed）
+```
+
+既存の3件も通ることを確認済みです。
+
 ## 検証
 
+上記テストに加え、実データでも確認しました。
 東京都の点群由来 DEM（0.25m / Float32 / `NoData=1.70141e+38`、
-全画素の 29.8% が NoData / 11,203 x 14,780）で確認しました。
+全画素の 29.8% が NoData / 11,203 x 14,780）:
 
 | | 出力の透明率 |
 |---|---|
@@ -107,10 +120,17 @@ NoData の巨大値が残っている場合、`p * p` が float32 の上限（�
 また、別途手元で運用している改造版（同等の修正を独自に当てたもの）の出力と
 **画素単位で完全一致**することを確認しました（8,591,616画素を照合し相違0）。
 
+性能への影響も測定しました（float32 1200x1200 / chunk 1024）:
+
+| | 所要 | 最大メモリ |
+|---|---|---|
+| v0.1.4 | 0.99秒 | 220.6MB |
+| 本PR | 0.66秒 | 226.0MB (+2.5%) |
+
+`masked=True` のオーバーヘッドを懸念していましたが、実測では問題ありませんでした。
+
 ## 影響と注意点
 
-- **`masked=True` はメモリ・速度にオーバーヘッドがあります。**
-  常時有効で良いか、オプション化すべきかはご判断ください
 - **NoData 宣言の無い DEM では透明化されません。**
   この場合は入力側で `gdal_edit.py -a_nodata` などによる宣言が必要です
 - 既存の挙動に依存している利用者がいる場合、出力が変わります
