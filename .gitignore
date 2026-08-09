@@ -1,0 +1,16 @@
+# 作業データ（巨大・再生成可能）
+work/
+*.tif
+*.tiff
+*.vrt
+*.zip
+*.webp
+*.png
+
+# csmap-py は別リポジトリから取得する
+csmap-py/
+
+# 一時ファイル
+*.tmp
+temp_filelist.txt
+.DS_Store
