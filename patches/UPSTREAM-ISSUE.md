@@ -1,4 +1,11 @@
-# 本家 MIERUNE/csmap-py への issue 下書き
+# 本家 MIERUNE/csmap-py への issue 下書き（予備）
+
+> **通常は使わない。** 本家は2025-01-07を最後に更新が止まっており、
+> 外部からの issue #14 も約10か月未回答のため、issue で方針を仰いでも反応が期待できない。
+> **修正が完成済みなので [UPSTREAM-PR.md](UPSTREAM-PR.md) の PR を直接出す方針。**
+> PR 本文が症状の説明を兼ねている。
+>
+> 本ファイルは「PRを出す前に議論したくなった場合」の予備として残す。
 
 投稿先: https://github.com/MIERUNE/csmap-py/issues/new
 

@@ -69,10 +69,14 @@ grep -c 'float64'      csmap/calc.py      # 2 (02を当てた場合)
 
 ## 本家への提案
 
+**PR を直接出す方針。** 本家は2025-01-07を最後に更新が止まっており、
+外部からの issue も未回答のため、issue で方針を仰ぐ意味が薄い。
+修正は完成済み（コード26行 + テスト140行）なので、動くPRを置く方が現実的。
+
 | ファイル | 内容 |
 |---|---|
-| [UPSTREAM-ISSUE.md](UPSTREAM-ISSUE.md) | issue の下書き |
-| [UPSTREAM-PR.md](UPSTREAM-PR.md) | PR の下書き |
+| [UPSTREAM-PR.md](UPSTREAM-PR.md) | **PR の下書き**（症状の説明を兼ねる。これを使う） |
+| [UPSTREAM-ISSUE.md](UPSTREAM-ISSUE.md) | issue の下書き（予備。通常は使わない） |
 
 ### fork の状態
 
