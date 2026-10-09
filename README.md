@@ -130,3 +130,7 @@ GDAL は **3.6以降**が必要（`gdal2tiles.py --tiledriver=WEBP` のため）
 python3 -c "from osgeo import gdal; print(gdal.__version__)"
 gdal2tiles.py --help | grep tiledriver
 ```
+
+## ライセンス
+
+本リポジトリのスクリプトおよびドキュメントは [MIT License](LICENSE) です。`patches/` は [MIERUNE/csmap-py](https://github.com/MIERUNE/csmap-py)（MIT License）への差分です。入力する DEM および生成した CS立体図・タイルには適用されません。
